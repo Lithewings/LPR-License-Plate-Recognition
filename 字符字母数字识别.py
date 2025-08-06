@@ -58,10 +58,6 @@ def setup_chinese_font():
         print("图表可能无法正确显示中文")
 
 
-# 禁用 TensorBoard 回调以解决日志目录问题
-USE_TENSORBOARD = False
-
-
 # 解决中文路径问题
 def safe_image_dataset_from_directory(directory, class_names, **kwargs):
     """解决中文路径问题的替代函数，支持数字文件夹名映射到字母类别"""
@@ -178,78 +174,59 @@ def visualize_results(model, history, val_ds, class_names, model_name):
     # 确保输出目录存在
     os.makedirs("results", exist_ok=True)
 
-    # 1. 训练历史可视化 - 更详细
-    plt.figure(figsize=(15, 10))
-
-    # 准确率图表
-    plt.subplot(2, 2, 1)
-    plt.plot(history.history['accuracy'], 'b-', label='训练准确率')
-    plt.plot(history.history['val_accuracy'], 'r-', label='验证准确率')
-
-    # 标记最佳验证准确率
+    # 提前计算关键指标
     best_epoch = np.argmax(history.history['val_accuracy'])
     best_acc = history.history['val_accuracy'][best_epoch]
-    plt.plot(best_epoch, best_acc, 'ro', markersize=10)
-    plt.annotate(f'最佳: {best_acc:.2%}',
-                 xy=(best_epoch, best_acc),
-                 xytext=(best_epoch + 0.5, best_acc - 0.05),
-                 arrowprops=dict(facecolor='black', shrink=0.05))
-
-    plt.title(f'{model_name} - 训练过程准确率')
-    plt.xlabel('训练轮次 (Epoch)')
-    plt.ylabel('准确率')
-    plt.legend()
-    plt.grid(True, linestyle='--', alpha=0.7)
-
-    # 损失图表
-    plt.subplot(2, 2, 2)
-    plt.plot(history.history['loss'], 'b-', label='训练损失')
-    plt.plot(history.history['val_loss'], 'r-', label='验证损失')
-
-    # 标记最低验证损失
     best_loss_epoch = np.argmin(history.history['val_loss'])
     best_loss = history.history['val_loss'][best_loss_epoch]
-    plt.plot(best_loss_epoch, best_loss, 'ro', markersize=10)
-    plt.annotate(f'最低: {best_loss:.4f}',
-                 xy=(best_loss_epoch, best_loss),
-                 xytext=(best_loss_epoch + 0.5, best_loss + 0.1),
-                 arrowprops=dict(facecolor='black', shrink=0.05))
-
-    plt.title(f'{model_name} - 训练过程损失')
-    plt.xlabel('训练轮次 (Epoch)')
-    plt.ylabel('损失值')
-    plt.legend()
-    plt.grid(True, linestyle='--', alpha=0.7)
-
-    # 2. 关键指标总结
-    plt.subplot(2, 2, 3)
-    # 创建空白区域显示关键指标
-    plt.axis('off')
-
-    # 计算关键指标
-    final_train_acc = history.history['accuracy'][-1]
     final_val_acc = history.history['val_accuracy'][-1]
-    final_train_loss = history.history['loss'][-1]
     final_val_loss = history.history['val_loss'][-1]
-    epochs = len(history.history['accuracy'])
 
-    # 显示关键指标
-    summary_text = (
-        f"模型: {model_name}\n"
-        f"训练轮次: {epochs}\n\n"
-        f"最终训练准确率: {final_train_acc:.2%}\n"
-        f"最终验证准确率: {final_val_acc:.2%}\n"
-        f"最佳验证准确率: {best_acc:.2%} (第{best_epoch + 1}轮)\n\n"
-        f"最终训练损失: {final_train_loss:.4f}\n"
-        f"最终验证损失: {final_val_loss:.4f}\n"
-        f"最低验证损失: {best_loss:.4f} (第{best_loss_epoch + 1}轮)"
-    )
+    # 1. 训练历史可视化 - 使用双坐标轴
+    plt.figure(figsize=(16, 8))
 
-    plt.text(0.1, 0.5, summary_text, fontsize=14,
-             bbox=dict(facecolor='lightyellow', alpha=0.5, boxstyle='round,pad=1'))
-    plt.title('关键训练指标总结')
+    # 创建双坐标轴
+    ax1 = plt.gca()
+    ax2 = ax1.twinx()
 
-    # 3. 混淆矩阵 - 更易读
+    # 准确率曲线（左侧Y轴）
+    ax1.plot(history.history['accuracy'], 'b-', linewidth=2, label='训练准确率')
+    ax1.plot(history.history['val_accuracy'], 'b--', linewidth=2, label='验证准确率')
+
+    # 损失曲线（右侧Y轴）
+    ax2.plot(history.history['loss'], 'r-', linewidth=2, label='训练损失')
+    ax2.plot(history.history['val_loss'], 'r--', linewidth=2, label='验证损失')
+
+    # 标记最佳验证准确率
+    ax1.plot(best_epoch, best_acc, 'bo', markersize=10, markeredgewidth=2,
+             fillstyle='none', label='最佳验证点')
+
+    # 标记最低验证损失
+    ax2.plot(best_loss_epoch, best_loss, 'ro', markersize=10, markeredgewidth=2,
+             fillstyle='none', label='最低损失点')
+
+    # 设置坐标轴标签和标题
+    ax1.set_xlabel('训练轮次 (Epoch)', fontsize=12)
+    ax1.set_ylabel('准确率', fontsize=12, color='b')
+    ax2.set_ylabel('损失值', fontsize=12, color='r')
+    plt.title(f'{model_name} - 训练过程', fontsize=16, pad=20)
+
+    # 设置网格和刻度
+    ax1.grid(True, linestyle='--', alpha=0.6)
+    ax1.tick_params(axis='y', labelcolor='b')
+    ax2.tick_params(axis='y', labelcolor='r')
+
+    # 合并图例
+    lines, labels = ax1.get_legend_handles_labels()
+    lines2, labels2 = ax2.get_legend_handles_labels()
+    ax1.legend(lines + lines2, labels + labels2, loc='center right',
+               fontsize=10, framealpha=0.9)
+
+    plt.tight_layout()
+    plt.savefig(f'results/{model_name}_training_history.png', dpi=120)
+    plt.close()
+
+    # 2. 混淆矩阵 - 专业热力图风格
     y_true = []
     y_pred = []
     all_labels = np.arange(len(class_names))
@@ -265,51 +242,30 @@ def visualize_results(model, history, val_ds, class_names, model_name):
     # 生成混淆矩阵
     cm = confusion_matrix(y_true, y_pred, labels=all_labels)
 
-    # 计算每个类别的准确率
-    class_accuracy = []
-    for i in range(len(class_names)):
-        if np.sum(cm[i, :]) > 0:
-            acc = cm[i, i] / np.sum(cm[i, :])
-        else:
-            acc = 0
-        class_accuracy.append(acc)
+    # 计算归一化混淆矩阵（按行）
+    cm_norm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
 
-    # 创建带准确率条形的混淆矩阵
-    plt.subplot(2, 2, 4)
+    plt.figure(figsize=(max(10, len(class_names) * 0.8), max(8, len(class_names) * 0.7)))
+    sns.heatmap(cm_norm, annot=True, fmt=".2f", cmap="Blues",
+                cbar_kws={'label': '准确率比例'},
+                linewidths=0.5, linecolor='lightgray',
+                annot_kws={"size": 10})
 
-    # 绘制混淆矩阵
-    plt.imshow(cm, cmap='Blues')
-    plt.title(f'{model_name} 混淆矩阵')
-    plt.ylabel('真实标签')
-    plt.xlabel('预测标签')
+    # 设置标签和标题
+    plt.title(f'{model_name} - 混淆矩阵', fontsize=16, pad=15)
+    plt.xlabel('预测标签', fontsize=12)
+    plt.ylabel('真实标签', fontsize=12)
 
-    # 添加数值标签
-    for i in range(len(class_names)):
-        for j in range(len(class_names)):
-            color = 'white' if cm[i, j] > np.max(cm) / 2 else 'black'
-            plt.text(j, i, str(cm[i, j]),
-                     ha='center', va='center',
-                     color=color, fontsize=9)
-
-    # 添加类别准确率条形图
-    plt.colorbar(label='样本数量')
-
-    # 在右侧添加类别准确率
-    ax = plt.gca()
-    ax2 = ax.twinx()
-    ax2.barh(range(len(class_names)), class_accuracy,
-             color='orange', alpha=0.6, height=0.8)
-    ax2.set_ylim(ax.get_ylim())
-    ax2.set_yticks(range(len(class_names)))
-    ax2.set_yticklabels(class_names, fontsize=9)
-    ax2.set_xlabel('类别准确率', fontsize=10)
-    ax2.grid(False)
+    # 设置刻度
+    tick_marks = np.arange(len(class_names))
+    plt.xticks(tick_marks + 0.5, class_names, rotation=45, ha='right', fontsize=10)
+    plt.yticks(tick_marks + 0.5, class_names, rotation=0, fontsize=10)
 
     plt.tight_layout()
-    plt.savefig(f'results/{model_name}_training_summary.png')
+    plt.savefig(f'results/{model_name}_confusion_matrix.png', dpi=120, bbox_inches='tight')
     plt.close()
 
-    # 4. 类别性能热力图
+    # 3. 类别性能指标 - 水平条形图
     report = classification_report(y_true, y_pred, target_names=class_names, output_dict=True)
 
     # 提取每个类别的性能指标
@@ -325,52 +281,96 @@ def visualize_results(model, history, val_ds, class_names, model_name):
                                   index=class_names,
                                   columns=[m.capitalize() for m in metrics])
 
-    # 绘制热力图
-    plt.figure(figsize=(12, max(8, len(class_names) * 0.5)))
-    sns.heatmap(performance_df, annot=True, fmt=".2f", cmap="YlGnBu",
-                cbar_kws={'label': '分数'}, linewidths=0.5)
+    # 添加加权平均值
+    weighted_avg = {
+        'Precision': report['weighted avg']['precision'],
+        'Recall': report['weighted avg']['recall'],
+        'F1-score': report['weighted avg']['f1-score']
+    }
 
-    # 添加平均值行
-    avg_row = pd.DataFrame({
-        'Precision': [report['weighted avg']['precision']],
-        'Recall': [report['weighted avg']['recall']],
-        'F1-score': [report['weighted avg']['f1-score']]
-    }, index=['加权平均'])
+    # 绘制水平条形图
+    fig, ax = plt.subplots(figsize=(12, max(6, len(class_names) * 0.5)))
 
-    # 添加平均值到热力图
-    plt.axhline(y=len(class_names), color='black', linewidth=2)
-    sns.heatmap(avg_row, annot=True, fmt=".2f", cmap="YlGnBu",
-                cbar=False, linewidths=0.5, ax=plt.gca())
+    # 设置位置和宽度
+    y_pos = np.arange(len(class_names))
+    bar_width = 0.25
 
-    plt.title(f'{model_name} - 各类别性能指标')
-    plt.xlabel('性能指标')
-    plt.ylabel('类别')
+    # 绘制每个指标
+    for i, metric in enumerate(performance_df.columns):
+        ax.barh(y_pos + i * bar_width, performance_df[metric],
+                height=bar_width, alpha=0.8, label=metric)
+
+    # 添加加权平均值线
+    ax.axvline(weighted_avg['Precision'], color='b', linestyle='--', alpha=0.5,
+               label=f'加权精确率 ({weighted_avg["Precision"]:.2f})')
+    ax.axvline(weighted_avg['Recall'], color='g', linestyle='--', alpha=0.5,
+               label=f'加权召回率 ({weighted_avg["Recall"]:.2f})')
+    ax.axvline(weighted_avg['F1-score'], color='r', linestyle='--', alpha=0.5,
+               label=f'加权F1值 ({weighted_avg["F1-score"]:.2f})')
+
+    # 设置标签和标题
+    ax.set_yticks(y_pos + bar_width)
+    ax.set_yticklabels(class_names, fontsize=10)
+    ax.set_xlabel('分数', fontsize=12)
+    ax.set_title(f'{model_name} - 类别性能指标', fontsize=16, pad=15)
+
+    # 添加图例
+    ax.legend(loc='lower right', fontsize=9, framealpha=0.9)
+
+    # 添加数值标签
+    for i, row in enumerate(performance_df.itertuples()):
+        for j, value in enumerate(row[1:]):
+            ax.text(value + 0.01, i + j * bar_width, f'{value:.2f}',
+                    va='center', fontsize=8)
+
     plt.tight_layout()
-    plt.savefig(f'results/{model_name}_class_performance.png')
+    plt.savefig(f'results/{model_name}_class_performance.png', dpi=120)
+    plt.close()
+
+    # 4. 关键指标总结 - 精美表格
+    # 创建表格数据
+    summary_data = [
+        ["模型名称", model_name],
+        ["训练轮次", len(history.history['accuracy'])],
+        ["最终验证准确率", f"{final_val_acc:.2%}"],
+        ["最佳验证准确率", f"{best_acc:.2%} (第{best_epoch + 1}轮)"],
+        ["最终验证损失", f"{final_val_loss:.4f}"],
+        ["最低验证损失", f"{best_loss:.4f} (第{best_loss_epoch + 1}轮)"],
+        ["加权F1值", f"{weighted_avg['F1-score']:.4f}"]
+    ]
+
+    # 创建表格图
+    fig, ax = plt.subplots(figsize=(10, 4))
+    ax.axis('off')
+
+    table = ax.table(cellText=summary_data,
+                     cellLoc='center',
+                     loc='center',
+                     colWidths=[0.3, 0.7])
+
+    # 美化表格样式
+    table.auto_set_font_size(False)
+    table.set_fontsize(12)
+    table.scale(1, 1.5)
+
+    # 设置标题单元格样式
+    for (i, j), cell in table.get_celld().items():
+        if i == 0 or j == 0:
+            cell.set_facecolor('#f0f0f0')
+            cell.set_text_props(weight='bold')
+
+    plt.title(f'{model_name} - 关键指标总结', fontsize=14, pad=20)
+    plt.tight_layout()
+    plt.savefig(f'results/{model_name}_summary_table.png', dpi=120, bbox_inches='tight')
     plt.close()
 
     # 5. 打印分类报告
-    print(f"\n{model_name} 详细分类报告:")
+    print(f"\n{'=' * 60}")
+    print(f"{model_name} 详细分类报告")
+    print('=' * 60)
     print(classification_report(y_true, y_pred, target_names=class_names))
 
-    # 打印模型评估总结
-    print("\n" + "=" * 60)
-    print(f"模型评估总结: {model_name}")
-    print("=" * 60)
-    print(f"最终验证准确率: {final_val_acc:.2%}")
-    print(f"最佳验证准确率: {best_acc:.2%} (第{best_epoch + 1}轮)")
-    print(f"最低验证损失: {best_loss:.4f} (第{best_loss_epoch + 1}轮)")
-
-    # 找出表现最差的3个类别
-    class_accuracy_dict = {cls: acc for cls, acc in zip(class_names, class_accuracy)}
-    worst_classes = sorted(class_accuracy_dict.items(), key=lambda x: x[1])[:3]
-
-    print("\n需要关注的类别:")
-    for cls, acc in worst_classes:
-        print(f"  - {cls}: 准确率 {acc:.2%}")
-
-    print("=" * 60)
-
+    # 返回报告数据
     return report
 
 
@@ -437,30 +437,30 @@ def validate_and_count_dataset(dataset, dataset_name, class_names):
     plt.close()
 
     # 显示几张示例图像
-    print("\n随机示例图像:")
-    plt.figure(figsize=(15, 10))
-
-    # 获取一个批次
-    for images, labels in dataset.take(1):
-        batch_size = images.shape[0]
-        num_samples = min(12, batch_size)  # 最多显示12张
-
-        for i in range(num_samples):
-            plt.subplot(3, 4, i + 1)
-            # 如果是单通道图像，转换为灰度显示
-            if images[i].shape[-1] == 1:
-                plt.imshow(images[i].numpy().squeeze(), cmap='gray')
-            else:
-                plt.imshow(images[i].numpy().astype("uint8"))
-
-            label_idx = tf.argmax(labels[i]).numpy()
-            plt.title(f"{class_names[label_idx]}")
-            plt.axis('off')
-
-    plt.tight_layout()
-    plt.savefig(f'{dataset_name}_sample_images.png')
-    plt.close()
-    print(f"示例图像已保存为 {dataset_name}_sample_images.png")
+    # print("\n随机示例图像:")
+    # plt.figure(figsize=(15, 10))
+    #
+    # # 获取一个批次
+    # for images, labels in dataset.take(1):
+    #     batch_size = images.shape[0]
+    #     num_samples = min(12, batch_size)  # 最多显示12张
+    #
+    #     for i in range(num_samples):
+    #         plt.subplot(3, 4, i + 1)
+    #         # 如果是单通道图像，转换为灰度显示
+    #         if images[i].shape[-1] == 1:
+    #             plt.imshow(images[i].numpy().squeeze(), cmap='gray')
+    #         else:
+    #             plt.imshow(images[i].numpy().astype("uint8"))
+    #
+    #         label_idx = tf.argmax(labels[i]).numpy()
+    #         plt.title(f"{class_names[label_idx]}")
+    #         plt.axis('off')
+    #
+    # plt.tight_layout()
+    # plt.savefig(f'{dataset_name}_sample_images.png')
+    # plt.close()
+    # print(f"示例图像已保存为 {dataset_name}_sample_images.png")
 
     return total_samples, class_counts
 
@@ -528,11 +528,7 @@ def train_model(model, train_ds, val_ds, model_name, class_names, epochs=50):
         )
     ]
 
-    # 如果需要 TensorBoard
-    if USE_TENSORBOARD:
-        log_dir = f"logs/{model_name}_" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-        os.makedirs(log_dir, exist_ok=True)
-        callbacks_list.append(callbacks.TensorBoard(log_dir=log_dir))
+
 
     # 训练
     print(f"\n{'=' * 60}")
@@ -560,131 +556,131 @@ def train_model(model, train_ds, val_ds, model_name, class_names, epochs=50):
 
 
 # ————————————————————————————————————————
-def preprocess_image(image_path, img_size=(40, 32)):
-    """
-    预处理二值化黑白图片，使其符合模型输入要求
-    :param image_path: 图片路径
-    :param img_size: 图像目标尺寸 (高度, 宽度) -> (40, 32)
-    :return: 预处理后的图像数组
-    """
-    # 读取图像 (直接以灰度模式读取)
-    img = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
-
-    if img is None:
-        raise ValueError(f"无法读取图片: {image_path}")
-
-    # 二值化处理 (确保是黑白二值图)
-    _, binary_img = cv2.threshold(img, 128, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
-
-    # 调整尺寸到模型期望的大小 (高度, 宽度) = (40, 32)
-    resized_img = cv2.resize(binary_img, (img_size[1], img_size[0]))
-
-    # 归一化 (将像素值缩放到0-1范围)
-    normalized_img = resized_img / 255.0
-
-    # 添加通道维度 (灰度图只有1个通道)
-    processed_img = np.expand_dims(normalized_img, axis=-1)  # 形状变为 (32, 40, 1)
-
-    # 添加批次维度
-    batched_img = np.expand_dims(processed_img, axis=0)  # 形状变为 (1, 32, 40, 1)
-
-    return batched_img, resized_img
-
-
-# 3. 加载训练好的模型
-def load_model(model_path):
-    """加载保存的模型"""
-    return tf.keras.models.load_model(model_path)
+# def preprocess_image(image_path, img_size=(40, 32)):
+#     """
+#     预处理二值化黑白图片，使其符合模型输入要求
+#     :param image_path: 图片路径
+#     :param img_size: 图像目标尺寸 (高度, 宽度) -> (40, 32)
+#     :return: 预处理后的图像数组
+#     """
+#     # 读取图像 (直接以灰度模式读取)
+#     img = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
+#
+#     if img is None:
+#         raise ValueError(f"无法读取图片: {image_path}")
+#
+#     # 二值化处理 (确保是黑白二值图)
+#     _, binary_img = cv2.threshold(img, 128, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
+#
+#     # 调整尺寸到模型期望的大小 (高度, 宽度) = (40, 32)
+#     resized_img = cv2.resize(binary_img, (img_size[1], img_size[0]))
+#
+#     # 归一化 (将像素值缩放到0-1范围)
+#     normalized_img = resized_img / 255.0
+#
+#     # 添加通道维度 (灰度图只有1个通道)
+#     processed_img = np.expand_dims(normalized_img, axis=-1)  # 形状变为 (32, 40, 1)
+#
+#     # 添加批次维度
+#     batched_img = np.expand_dims(processed_img, axis=0)  # 形状变为 (1, 32, 40, 1)
+#
+#     return batched_img, resized_img
 
 
-# 4. 预测并显示结果
-def predict_and_display(model, image_path):
-    """
-    预测单张图片并可视化结果
-    :param model: 加载的模型
-    :param image_path: 要预测的图片路径
-    """
-    # 预处理图像
-    input_img, display_img = preprocess_image(image_path)
-
-    # 进行预测
-    predictions = model.predict(input_img)
-    predicted_class = np.argmax(predictions[0])
-    confidence = np.max(predictions[0])
-
-    # 获取预测结果
-    predicted_label = main_class_names[predicted_class]
-
-    # 获取所有预测结果
-    top34_indices = np.argsort(predictions[0])[::-1][:34]
-    top34_labels = [main_class_names[i] for i in top34_indices]
-    top34_confidences = [predictions[0][i] for i in top34_indices]
-
-    # 可视化结果
-    plt.figure(figsize=(10, 6))
-
-    # 显示原始图像
-    plt.subplot(1, 2, 1)
-    plt.imshow(display_img, cmap='gray')
-    plt.title(f'输入图像 ({display_img.shape[1]}x{display_img.shape[0]})')
-    plt.axis('off')
-
-    # 显示预测结果
-    plt.subplot(1, 2, 2)
-    plt.barh(top34_labels, top34_confidences, color='skyblue')
-    plt.xlabel('置信度')
-    plt.title('预测结果 (Top 3)')
-    plt.xlim(0, 1)
-
-    # 添加置信度文本
-    for i, conf in enumerate(top34_confidences):
-        plt.text(conf + 0.02, i, f'{conf:.2%}', va='center')
-
-    # 添加主预测结果
-    plt.figtext(0.5, 0.05,
-                f"预测结果: {predicted_label} (置信度: {confidence:.2%})",
-                ha="center", fontsize=14,
-                bbox=dict(facecolor='lightgreen', alpha=0.5))
-
-    plt.tight_layout()
-    plt.show()
-
-    # 打印详细预测结果
-    print("\n" + "=" * 50)
-    print(f"预测结果: {predicted_label}")
-    print(f"置信度: {confidence:.2%}")
-    print("\n 所有预测:")
-    for label, conf in zip(top34_labels, top34_confidences):
-        print(f"  {label}: {conf:.2%}")
-    print("=" * 50)
-
-
-# 5. 主函数
-def main():
-    # 加载模型 (替换为您的模型路径)
-    MODEL_PATH = "models/best_main_model.h5"  # 例如: "models/char_classifier.h5"
-    model = load_model(MODEL_PATH)
-
-    # 打印模型摘要
-    print("模型加载成功!")
-    model.summary()
-
-    # 打印输入形状信息
-    input_shape = model.input_shape
-    print(f"\n模型期望输入形状: {input_shape}")
-    print(f"高度: {input_shape[1]}, 宽度: {input_shape[2]}, 通道数: {input_shape[3]}")
-
-    # 测试单张图片 (替换为您的图片路径)
-    while True:
-        image_path = input("\n请输入要识别的图片路径 (或输入 'exit' 退出): ")
-        if image_path.lower() == 'exit':
-            break
-
-        try:
-            predict_and_display(model, image_path)
-        except Exception as e:
-            print(f"错误: {str(e)}")
-            print("请检查图片路径是否正确，图片是否为二值化黑白图像")
+# # 3. 加载训练好的模型
+# def load_model(model_path):
+#     """加载保存的模型"""
+#     return tf.keras.models.load_model(model_path)
+#
+#
+# # 4. 预测并显示结果
+# def predict_and_display(model, image_path):
+#     """
+#     预测单张图片并可视化结果
+#     :param model: 加载的模型
+#     :param image_path: 要预测的图片路径
+#     """
+#     # 预处理图像
+#     input_img, display_img = preprocess_image(image_path)
+#
+#     # 进行预测
+#     predictions = model.predict(input_img)
+#     predicted_class = np.argmax(predictions[0])
+#     confidence = np.max(predictions[0])
+#
+#     # 获取预测结果
+#     predicted_label = main_class_names[predicted_class]
+#
+#     # 获取所有预测结果
+#     top34_indices = np.argsort(predictions[0])[::-1][:34]
+#     top34_labels = [main_class_names[i] for i in top34_indices]
+#     top34_confidences = [predictions[0][i] for i in top34_indices]
+#
+#     # 可视化结果
+#     plt.figure(figsize=(10, 6))
+#
+#     # 显示原始图像
+#     plt.subplot(1, 2, 1)
+#     plt.imshow(display_img, cmap='gray')
+#     plt.title(f'输入图像 ({display_img.shape[1]}x{display_img.shape[0]})')
+#     plt.axis('off')
+#
+#     # 显示预测结果
+#     plt.subplot(1, 2, 2)
+#     plt.barh(top34_labels, top34_confidences, color='skyblue')
+#     plt.xlabel('置信度')
+#     plt.title('预测结果 (Top 3)')
+#     plt.xlim(0, 1)
+#
+#     # 添加置信度文本
+#     for i, conf in enumerate(top34_confidences):
+#         plt.text(conf + 0.02, i, f'{conf:.2%}', va='center')
+#
+#     # 添加主预测结果
+#     plt.figtext(0.5, 0.05,
+#                 f"预测结果: {predicted_label} (置信度: {confidence:.2%})",
+#                 ha="center", fontsize=14,
+#                 bbox=dict(facecolor='lightgreen', alpha=0.5))
+#
+#     plt.tight_layout()
+#     plt.show()
+#
+#     # 打印详细预测结果
+#     print("\n" + "=" * 50)
+#     print(f"预测结果: {predicted_label}")
+#     print(f"置信度: {confidence:.2%}")
+#     print("\n 所有预测:")
+#     for label, conf in zip(top34_labels, top34_confidences):
+#         print(f"  {label}: {conf:.2%}")
+#     print("=" * 50)
+#
+#
+# # 5. 主函数
+# def main():
+#     # 加载模型 (替换为您的模型路径)
+#     MODEL_PATH = "models/best_main_model.h5"  # 例如: "models/char_classifier.h5"
+#     model = load_model(MODEL_PATH)
+#
+#     # 打印模型摘要
+#     print("模型加载成功!")
+#     model.summary()
+#
+#     # 打印输入形状信息
+#     input_shape = model.input_shape
+#     print(f"\n模型期望输入形状: {input_shape}")
+#     print(f"高度: {input_shape[1]}, 宽度: {input_shape[2]}, 通道数: {input_shape[3]}")
+#
+#     # 测试单张图片 (替换为您的图片路径)
+#     while True:
+#         image_path = input("\n请输入要识别的图片路径 (或输入 'exit' 退出): ")
+#         if image_path.lower() == 'exit':
+#             break
+#
+#         try:
+#             predict_and_display(model, image_path)
+#         except Exception as e:
+#             print(f"错误: {str(e)}")
+#             print("请检查图片路径是否正确，图片是否为二值化黑白图像")
 
 
 # ————————————————————————————————————————————

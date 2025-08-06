@@ -88,7 +88,7 @@ def locate_license_plate(image_path):
 
     print("步骤5/8: 形态学操作")
     # 可视化核
-    kernel_vis = cv2.resize(kernel * 255, (300, 75), interpolation=cv2.INTER_NEAREST)
+    cv2.resize(kernel * 255, (300, 75), interpolation=cv2.INTER_NEAREST)
 
     # ____________________________________________________________________
 
