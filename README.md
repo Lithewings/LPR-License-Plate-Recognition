@@ -11,8 +11,8 @@
 
 
 
-![车牌定位结果](valid_recognized/plate_located.png)
-
+![车牌定位](valid_recognized/plate_located.png)
+![结果](final.png)
 ## 项目亮点
 
 - **端到端识别流程**：从原始图片中定位车牌区域，完成字符分割，并调用 CNN 模型输出识别结果。
