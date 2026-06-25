@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+.venv/
+venv/
+env/
+python/
+
+# IDE and OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Runtime outputs
+logs/
+*.log
+
+# Large local artifacts
+*.zip
+*.rar
+*.7z
+
+# Optional: uncomment before publishing if dataset/model files are too large for GitHub
+# tf_car_license_dataset/
+# models/*.h5
+# *.h5
