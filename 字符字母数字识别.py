@@ -1,12 +1,18 @@
-import cv2
-import pandas as pd
-from keras import layers, models, optimizers, callbacks
+
 import matplotlib
+import pandas as pd
+
+
+
+
+from tensorflow.keras import layers,models,optimizers,callbacks
+
 import tensorflow as tf
 import numpy as np
 import os
 import matplotlib.pyplot as plt
 from sklearn.metrics import confusion_matrix, classification_report
+from matplotlib.font_manager import FontProperties
 import seaborn as sns
 import datetime
 import json
@@ -17,7 +23,7 @@ USE_TENSORBOARD = False
 matplotlib.use('TkAgg')
 plt.rcParams['font.sans-serif'] = ['SimHei']
 
-from matplotlib.font_manager import FontProperties
+
 
 
 # 设置中文字体支持
@@ -491,6 +497,59 @@ def create_main_model():
     return model
 
 
+
+def create_enhanced_lenet():
+    """
+    基于LeNet-5改进的卷积神经网络，专门用于车牌字符识别（含汉字）。
+    改进点：
+        - 输入尺寸增大至48x48，保留更多细节。
+        - 卷积核数量增加（32-64-128）。
+        - 加入批归一化(BN)和Dropout，加速收敛并防止过拟合。
+        - 使用全局平均池化(GAP)替代Flatten，减少参数量并增强平移不变性。
+        - 全连接层后加入Dropout进一步正则化。
+    """
+
+    inputs = layers.Input(shape=(40, 32, 1))
+
+    # 第一卷积块：Conv + BN + ReLU + MaxPool
+    x = layers.Conv2D(32, (5, 5), padding='same', activation='relu')(inputs)
+    x = layers.BatchNormalization()(x)
+    x = layers.MaxPooling2D((2, 2))(x)
+    x = layers.Dropout(0.25)(x)
+
+    # 第二卷积块：Conv + BN + ReLU + MaxPool
+    x = layers.Conv2D(64, (5, 5), padding='same', activation='relu')(x)
+    x = layers.BatchNormalization()(x)
+    x = layers.MaxPooling2D((2, 2))(x)
+    x = layers.Dropout(0.25)(x)
+
+    # 第三卷积块：Conv + BN + ReLU（LeNet-5中为C5，此处用卷积代替全连接）
+    x = layers.Conv2D(128, (5, 5), padding='same', activation='relu')(x)
+    x = layers.BatchNormalization()(x)
+    x = layers.Dropout(0.25)(x)
+
+
+
+
+
+
+
+    # 全局平均池化（GAP）替代Flatten，减少参数并保留空间信息
+    x = layers.GlobalAvgPool2D()(x)
+
+    # 全连接层（F6）
+    x = layers.Dense(84, activation='relu')(x)
+    x = layers.BatchNormalization()(x)
+    x = layers.Dropout(0.5)(x)
+
+    # 输出层（Softmax）
+    outputs = layers.Dense(len(main_class_names), activation='softmax')(x)
+
+    model = models.Model(inputs=inputs, outputs=outputs)
+    return model
+
+
+
 # 6. 数据预处理函数 - 简化版本
 def preprocess(image, label):
     image = tf.cast(image, tf.float32) / 255.0
@@ -708,8 +767,8 @@ if __name__ == "__main__":
     val_samples, val_class_counts = validate_and_count_dataset(val_ds, "验证集", main_class_names)
 
     # 创建模型
-    main_model = create_main_model()
-
+    # main_model = create_main_model()
+    main_model = create_enhanced_lenet()
     # 打印模型摘要
     print("\n模型架构:")
     main_model.summary()
@@ -719,9 +778,9 @@ if __name__ == "__main__":
         main_model,
         train_ds,
         val_ds,
-        "main_model",
+        "new_model",
         main_class_names
     )
 
     # 可视化训练结果
-    visualize_results(trained_model, history, val_ds, main_class_names, "main_model")
+    visualize_results(trained_model, history, val_ds, main_class_names, "new_model")

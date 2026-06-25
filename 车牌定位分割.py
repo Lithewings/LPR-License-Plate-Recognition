@@ -37,7 +37,7 @@ def locate_license_plate(image_path):
     print("步骤1/8: 显示原始图像")
 
     # ____________________________________________________________________
-    # vis_original = visualize_step("1. 显示原始图像".encode("gbk"), original)
+    vis_original = visualize_step("1. 显示原始图像".encode("gbk"), original)
     # ____________________________________________________________________
 
     # 2. 调整图像尺寸
@@ -60,7 +60,7 @@ def locate_license_plate(image_path):
     print("步骤3/8: 转换到HSV颜色空间")
 
     # ____________________________________________________________________
-    # vis_hsv = visualize_step("3. HSV颜色空间".encode("gbk"), hsv)
+    vis_hsv = visualize_step("3. HSV颜色空间".encode("gbk"), hsv)
     # ____________________________________________________________________
 
     # 4. 创建颜色掩膜 (专注于蓝色车牌)
@@ -73,7 +73,7 @@ def locate_license_plate(image_path):
     print("步骤4/8: 创建蓝色车牌掩膜")
 
     # ____________________________________________________________________
-    # vis_blue_mask = visualize_step("4. 蓝色车牌掩膜".encode("gbk"), blue_mask)
+    vis_blue_mask = visualize_step("4. 蓝色车牌掩膜".encode("gbk"), blue_mask)
     # ____________________________________________________________________
 
     # 5. 形态学操作
@@ -101,9 +101,9 @@ def locate_license_plate(image_path):
 
     # ____________________________________________________________________
     # 可视化开运算结果
-    # vis_opened = visualize_step("5.2 开运算结果".encode("gbk"), opened)
+    vis_opened = visualize_step("5.2 开运算结果".encode("gbk"), opened)
     # 可视化闭运算结果
-    # vis_closed = visualize_step("5.3 闭运算结果".encode("gbk"), closed)
+    vis_closed = visualize_step("5.3 闭运算结果".encode("gbk"), closed)
     # ____________________________________________________________________
 
     # 6. 查找轮廓
@@ -116,7 +116,7 @@ def locate_license_plate(image_path):
 
     print("步骤6/8: 查找轮廓")
     # ________________________________________________________
-    # vis_contours = visualize_step("6. 检测到的轮廓".encode("gbk"), contour_img, cv2.COLOR_BGR2RGB)
+    vis_contours = visualize_step("6. 检测到的轮廓".encode("gbk"), contour_img, cv2.COLOR_BGR2RGB)
     # ________________________________________________________
     # 7. 筛选轮廓 - 针对蓝色车牌优化
     plate_contour = None
@@ -194,7 +194,7 @@ def locate_license_plate(image_path):
     print("步骤7/8: 轮廓筛选 (绿色为有效候选)")
 
     # ________________________________________________________
-    # vis_candidates = visualize_step("7. 轮廓筛选结果".encode("gbk"), candidate_img)
+    vis_candidates = visualize_step("7. 轮廓筛选结果".encode("gbk"), candidate_img)
     final_result2_dir = "final_result2"
     os.makedirs(final_result2_dir, exist_ok=True)
     cv2.imwrite('final_result2/plate_located.png', candidate_img)
@@ -577,7 +577,7 @@ def process_license_plate(plate_img):
     """
     处理车牌图像：分割字符并保存
     """
-    # 1. 预处理车牌图像
+    # 1. 预处理车牌图像，对分割好的车牌进行二值化处理等
     processed, gray_plate = improved_preprocess_plate_image(plate_img)
 
     # 2. 分割字符
@@ -743,9 +743,11 @@ def predict_characters(model, characters_folder):
 
 
 # 5. 预测主函数
-def main():
+def main(mod_path):
     # 加载模型 (替换为您的模型路径)
-    MODEL_PATH = "models/best_main_model.h5"  # 例如: "models/char_classifier.h5"
+
+    MODEL_PATH = mod_path
+    # 例如: "models/char_classifier.h5"
     model = load_model(MODEL_PATH)
 
     # 打印模型摘要
@@ -764,7 +766,7 @@ if __name__ == "__main__":
     # 改进思路：车牌的第一个字符一定是汉字，用汉字模型识别，车牌的第二个字符一定是字母，用字母模式识别，车牌之后的字符，用字母和数字模型识别
 
     # 替换为您的车牌图像路径
-    image_path = "test4.png"
+    image_path = "test6.png"
 
     # 执行车牌定位
     plate_img = locate_license_plate(image_path)
@@ -794,4 +796,6 @@ if __name__ == "__main__":
         for i, char in enumerate(characters):
             print(f"字符 {i}: 位置 {char['position']}, 尺寸 {char['image'].shape}")
 
-    main()
+    # main("models/best_main_model.h5")
+    main("models/best_new_model.h5")
+    # main("models/best_new_model2.h5")
